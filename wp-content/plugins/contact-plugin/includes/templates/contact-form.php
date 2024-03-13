@@ -1,4 +1,4 @@
-<form>
+<form id="enquiry_form">
     <label for="name">Name</label><br>
     <input type="text" name="name"><br><br>
 
