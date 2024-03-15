@@ -2,6 +2,33 @@
 add_shortcode('contact', 'show_contact_form');
 add_action('rest_api_init', 'create_rest_endpoint');
 add_action('init', 'create_submissions_page');
+add_action('add_meta_boxes', 'create_meta_box');
+
+function create_meta_box()
+{
+    add_meta_box('custom_contact_form', 'Submission', 'display_submission', 'submission');
+}
+
+function display_submission()
+{
+    $postmetas = get_post_meta(get_the_ID());
+
+    unset($postmetas['_edit_lock']);
+
+    // echo '<ul>';
+    // foreach ($postmetas as $key => $value) {
+    //     echo '<li><strong>' . ucfirst($key) . '</strong><br>' . $value[0] . '</li>';
+    // }
+    // echo '</ul>';
+
+
+    echo '<ul>';
+    echo '<li><strong>Name:</strong><br>' . get_post_meta(get_the_ID(), 'name', true) . '</li>';
+    echo '<li><strong>Email:</strong><br>' . get_post_meta(get_the_ID(), 'email', true) . '</li>';
+    echo '<li><strong>Phone:</strong><br>' . get_post_meta(get_the_ID(), 'phone', true) . '</li>';
+    echo '<li><strong>Message:</strong><br>' . get_post_meta(get_the_ID(), 'message', true) . '</li>';
+    echo '</ul>';
+}
 
 function create_submissions_page()
 {
@@ -13,7 +40,13 @@ function create_submissions_page()
             'name' => 'Submissions',
             'singular_name' => 'Submissions'
         ],
-        'supports' => ['custom-fields']
+        'supports' => false,
+        // 'supports' => ['custom-fields']
+        'capability_type' => 'post',
+        'capabilities' => [
+            'create_posts' => false
+        ],
+        'map_meta_cap' => true     // Set to false if users are not allowed to edit/delete existing posts
     ];
 
     register_post_type('submission', $args);
@@ -63,7 +96,8 @@ function handle_enquiry($data)
 
     $postarr = [
         'post_title' => $params['name'],
-        'post_type' => 'submission'
+        'post_type' => 'submission',
+        'post_status' => 'publish',
     ];
 
     $post_id = wp_insert_post($postarr);
