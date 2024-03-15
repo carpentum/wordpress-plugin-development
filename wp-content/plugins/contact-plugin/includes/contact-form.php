@@ -1,6 +1,23 @@
 <?php
 add_shortcode('contact', 'show_contact_form');
 add_action('rest_api_init', 'create_rest_endpoint');
+add_action('init', 'create_submissions_page');
+
+function create_submissions_page()
+{
+
+    $args = [
+        'public' => true,
+        'has_archive' => true,
+        'labels' => [
+            'name' => 'Submissions',
+            'singular_name' => 'Submissions'
+        ],
+        'supports' => ['custom-fields']
+    ];
+
+    register_post_type('submission', $args);
+}
 
 function show_contact_form()
 {
@@ -44,8 +61,17 @@ function handle_enquiry($data)
     $message = '';
     $message .= "<h1>Message has been sent from {$params['name']}</h1><br><br>";
 
+    $postarr = [
+        'post_title' => $params['name'],
+        'post_type' => 'submission'
+    ];
+
+    $post_id = wp_insert_post($postarr);
+
     foreach ($params as $label => $value) {
         $message .= '<strong>' . ucfirst($label) . "</strong>: " . $value . '<br>';
+
+        add_post_meta($post_id, $label, $value);
     }
 
     wp_mail($admin_email, $subject, $message, $headers);
