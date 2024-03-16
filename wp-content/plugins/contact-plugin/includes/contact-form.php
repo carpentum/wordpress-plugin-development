@@ -5,6 +5,39 @@ add_action('init', 'create_submissions_page');
 add_action('add_meta_boxes', 'create_meta_box');
 add_action('manage_submission_posts_columns', 'custom_submission_columns');
 add_action('manage_submission_posts_custom_column', 'fill_submission_columns', 10, 2);
+add_action('admin_init', 'setup_search');
+
+function setup_search()
+{
+    global $typenow;
+
+    if ($typenow === 'submission') {
+        add_filter('posts_search', 'submissions_search_override', 10, 2);
+    }
+}
+
+function submissions_search_override($search, $query)
+{
+    global $wpdb;
+
+    if ($query->is_main_query() && !empty($query->query['s'])) {
+        $sql    = "
+          or exists (
+              select * from {$wpdb->postmeta} where post_id={$wpdb->posts}.ID
+              and meta_key in ('name','email','phone')
+              and meta_value like %s
+          )
+      ";
+        $like   = '%' . $wpdb->esc_like($query->query['s']) . '%';
+        $search = preg_replace(
+            "#\({$wpdb->posts}.post_title LIKE [^)]+\)\K#",
+            $wpdb->prepare($sql, $like),
+            $search
+        );
+    }
+
+    return $search;
+}
 
 function fill_submission_columns($column, $post_id)
 {
