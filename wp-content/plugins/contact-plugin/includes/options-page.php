@@ -1,5 +1,7 @@
 <?php
 
+if (!defined('ABSPATH')) die('You cannot be here');
+
 use Carbon_Fields\Container;
 use Carbon_Fields\Field;
 

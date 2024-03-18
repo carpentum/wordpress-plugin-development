@@ -1,4 +1,7 @@
 <?php
+
+if (!defined('ABSPATH')) die('You cannot be here');
+
 add_shortcode('contact', 'show_contact_form');
 add_action('rest_api_init', 'create_rest_endpoint');
 add_action('init', 'create_submissions_page');
@@ -49,16 +52,16 @@ function fill_submission_columns($column, $post_id)
 {
     switch ($column) {
         case 'name':
-            echo get_post_meta($post_id, 'name', true);
+            echo esc_html(get_post_meta($post_id, 'name', true));
             break;
         case 'email':
-            echo get_post_meta($post_id, 'email', true);
+            echo esc_html(get_post_meta($post_id, 'email', true));
             break;
         case 'phone':
-            echo get_post_meta($post_id, 'phone', true);
+            echo esc_html(get_post_meta($post_id, 'phone', true));
             break;
         case 'message':
-            echo get_post_meta($post_id, 'message', true);
+            echo esc_html(get_post_meta($post_id, 'message', true));
             break;
     }
 }
@@ -94,10 +97,10 @@ function display_submission()
 
 
     echo '<ul>';
-    echo '<li><strong>Name:</strong><br>' . get_post_meta(get_the_ID(), 'name', true) . '</li>';
-    echo '<li><strong>Email:</strong><br>' . get_post_meta(get_the_ID(), 'email', true) . '</li>';
-    echo '<li><strong>Phone:</strong><br>' . get_post_meta(get_the_ID(), 'phone', true) . '</li>';
-    echo '<li><strong>Message:</strong><br>' . get_post_meta(get_the_ID(), 'message', true) . '</li>';
+    echo '<li><strong>Name:</strong><br>' . esc_html(get_post_meta(get_the_ID(), 'name', true)) . '</li>';
+    echo '<li><strong>Email:</strong><br>' . esc_html(get_post_meta(get_the_ID(), 'email', true)) . '</li>';
+    echo '<li><strong>Phone:</strong><br>' . esc_html(get_post_meta(get_the_ID(), 'phone', true)) . '</li>';
+    echo '<li><strong>Message:</strong><br>' . esc_html(get_post_meta(get_the_ID(), 'message', true)) . '</li>';
     echo '</ul>';
 }
 
@@ -144,6 +147,12 @@ function handle_enquiry($data)
 {
     $params = $data->get_params();
 
+    // Set fields fromo the form
+    $field_name = sanitize_text_field($params['name']);
+    $field_email = sanitize_text_field($params['email']);
+    $field_phone = sanitize_text_field($params['phone']);
+    $field_message = sanitize_text_field($params['message']);
+
     if (!wp_verify_nonce($params['_wpnonce'], 'wp_rest')) {
         return new WP_REST_Response('There has been an error sending the email!', 422);
     }
@@ -158,15 +167,15 @@ function handle_enquiry($data)
     $admin_name = get_bloginfo('name');
 
     $headers[] = "From: {$admin_name} <{$admin_email}>";
-    $headers[] = "Reply-to: {$params['name']} <{$params['email']}>";
+    $headers[] = "Reply-to: {$field_name} <{$field_email}>";
     $headers[] = "Content-type: text/html";
 
-    $subject = "New enquiry from {$params['name']}";
+    $subject = "New enquiry from {$field_name}";
     $message = '';
-    $message .= "<h1>Message has been sent from {$params['name']}</h1><br><br>";
+    $message .= "<h1>Message has been sent from {$field_name}</h1><br><br>";
 
     $postarr = [
-        'post_title' => $params['name'],
+        'post_title' => $field_name,
         'post_type' => 'submission',
         'post_status' => 'publish',
     ];
@@ -174,9 +183,21 @@ function handle_enquiry($data)
     $post_id = wp_insert_post($postarr);
 
     foreach ($params as $label => $value) {
-        $message .= '<strong>' . ucfirst($label) . "</strong>: " . $value . '<br>';
 
-        add_post_meta($post_id, $label, $value);
+        switch ($label) {
+            case 'message':
+                $value = sanitize_textarea_field($value);
+                break;
+            case 'email':
+                $value = sanitize_email($value);
+                break;
+            default:
+                $value = sanitize_text_field($value);
+        }
+
+        add_post_meta($post_id, sanitize_text_field($label), $value);
+
+        $message .= '<strong>' . sanitize_text_field(ucfirst($label)) . "</strong>: " . $value . '<br>';
     }
 
     wp_mail($admin_email, $subject, $message, $headers);
